@@ -31,6 +31,10 @@ def smiles2int(drug):
 def seqs2int(target):
     return [VOCAB_PROTEIN[s] for s in target]
 
+def I():
+    """Single-qubit
+
+    """
 
 def rx(phi):
     """Single-qubit rotation for operator sigmax with angle phi.
@@ -465,7 +469,8 @@ class Circuit(object):
             "target qubit is not available"
         self._add_gate('Z', target_qubit, None)
 
-    def cont(self, control_qubit, target_qubit):
+    def cnot(self, control_qubit: int, target_qubit: int):
+        # todo 判断是否是整数
         assert control_qubit <= self.n_qubits
         assert 0 <= target_qubit < self.n_qubits, \
             "target qubit is not available"
@@ -559,9 +564,11 @@ class Circuit(object):
             gate_matrix = rz(params)
         # elif gate_name == 'x':
         #     gate_matrix = x_gate()
+        elif gate_name == 'Hcz':
+            gate_matrix = Hcz()
         elif gate_name == 'z':
             gate_matrix = z_gate()
-        elif gate_name == 'cont':
+        elif gate_name == 'cnot':
             gate_matrix = cnot()
         elif gate_name == 'Hcz':
             gate_matrix = Hcz()
