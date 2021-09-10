@@ -426,8 +426,9 @@ class QEqualizedConv0(nn.Module):
 
 class Circuit(object):
     def __init__(self, N):
-        self.n_qubits = N
-        self.list = []
+        self.U = None
+        self.n_qubits = N  # 总QuBit的个数
+        self.gate_list = []  # 顺序保存门结构
 
     # def add_quibts(self, n):
     #     self.n_qubits += n
@@ -437,39 +438,46 @@ class Circuit(object):
 
         """
         # assert gate_name in list[]  #todo 创建一个可信池子
-        self.list.append([gate_name, gate_params, target_qubit])
+        self.gate_list.append({'gate': gate_name, 'theta': gate_params, 'which_qubit': target_qubit})
 
     def rx(self, target_qubit, phi):
-        assert target_qubit <= self.n_qubits
+        assert 0 <= target_qubit < self.n_qubits, \
+            "target qubit is not available"
         self._add_gate('rx', target_qubit, phi)
 
     def ry(self, target_qubit, phi):
-        assert target_qubit <= self.n_qubits
+        assert 0 <= target_qubit < self.n_qubits, \
+            "target qubit is not available"
         self._add_gate('ry', target_qubit, phi)
 
     def rz(self, target_qubit, phi):
-        assert target_qubit <= self.n_qubits
+        assert 0 <= target_qubit < self.n_qubits, \
+            "target qubit is not available"
         self._add_gate('rz', target_qubit, phi)
 
-    def x_gate(self, target_qubit):
-        assert target_qubit <= self.n_qubits
-        self._add_gate('X', target_qubit, [])
+    # def x_gate(self, target_qubit):
+    #     assert 0 <= target_qubit < self.n_qubits, \
+    #         "target qubit is not available"
+    #     self._add_gate('X', target_qubit, None)
 
     def z_gate(self, target_qubit):
-        assert target_qubit <= self.n_qubits
-        self._add_gate('Z', target_qubit, [])
+        assert 0 <= target_qubit < self.n_qubits, \
+            "target qubit is not available"
+        self._add_gate('Z', target_qubit, None)
 
     def cont(self, control_qubit, target_qubit):
         assert control_qubit <= self.n_qubits
-        assert target_qubit <= self.n_qubits
-        self._add_gate('I', control_qubit, [])
-        self._add_gate('X', target_qubit, [])
+        assert 0 <= target_qubit < self.n_qubits, \
+            "target qubit is not available"
+        self._add_gate('I', control_qubit, None)
+        self._add_gate('X', target_qubit, None)
 
     def Hcz(self, control_qubit, target_qubit):
         assert control_qubit <= self.n_qubits
-        assert target_qubit <= self.n_qubits
-        self._add_gate('I', control_qubit, [])
-        self._add_gate('Z', target_qubit, [])
+        assert 0 <= target_qubit < self.n_qubits, \
+            "target qubit is not available"
+        self._add_gate('I', control_qubit, None)
+        self._add_gate('Z', target_qubit, None)
 
     def rxx(self, phi, target_qubit01, target_qubit02=None):
         if not target_qubit02:
@@ -486,6 +494,8 @@ class Circuit(object):
             target_qubit02 = target_qubit01 + 1
         assert target_qubit01 <= self.n_qubits
         assert target_qubit02 <= self.n_qubits
+        "target qubit should not be the same"
+        assert target_qubit01 != target_qubit02
         self._add_gate('ry', target_qubit01, phi)
         self._add_gate('ry', target_qubit02, phi)
         self._add_gate('ry', target_qubit01, phi)
@@ -501,17 +511,74 @@ class Circuit(object):
         self._add_gate('rz', target_qubit01, phi)
         self._add_gate('rz', target_qubit02, phi)
 
-    def show_list(self):
-        print(self.list)
+    def show_gates(self):
+        print(f"\n gate in sequence is : {self.gate_list}")
+
+    def read_gate(self):
+        """
+        get
+        """
+        # create U
+        dim = 2 ** self.n_qubits
+        U = torch.eye(dim, dtype=torch.complex64)
+
+        for i, list_ele in enumerate(self.gate_list):
+
+            # print(list_ele)
+            # print(f"gate: {list_ele['gate']}")
+            # print(f"param: {list_ele['theta']} \n")
+            gate_matrix_temp = self._gate_to_matrix(list_ele['gate'], list_ele['theta'])
+            cir_matrix_temp = gate_expand_1toN(gate_matrix_temp, self.n_qubits, list_ele['which_qubit'])
+
+            U = cir_matrix_temp @ U  # Note: the sequence should be right
+
+            print(f"\n index: {i}"
+                  f"\n gate_list:{list_ele}"
+                  f"\n gate_matrix: {gate_matrix_temp}"
+                  f"\n circuit_matrix: {cir_matrix_temp}"
+                  f"\n U: {U}")
+
+        self.U = U
+
+    def _gate_to_matrix(self, gate_name, params=None):
+        # params to tensor
+        if params is not None:
+            params = torch.tensor(params)
+        else:
+            pass
+
+        if gate_name is not str:
+            gate_name = str(gate_name)
+
+        # choose gate
+        if gate_name == 'rx':
+            gate_matrix = rx(params)
+        elif gate_name == 'ry':
+            gate_matrix = ry(params)
+        elif gate_name == 'rz':
+            gate_matrix = rz(params)
+        # elif gate_name == 'x':
+        #     gate_matrix = x_gate()
+        elif gate_name == 'z':
+            gate_matrix = z_gate()
+        elif gate_name == 'cont':
+            gate_matrix = cnot()
+        elif gate_name == 'Hcz':
+            gate_matrix = Hcz()
+        elif gate_name == 'rxx':
+            gate_matrix = rxx(params)
+        elif gate_name == 'ryy':
+            gate_matrix = ryy(params)
+        elif gate_name == 'rzz':
+            gate_matrix = rzz(params)
+        else:
+            raise Exception("Gate name not accepted")
+
+        return gate_matrix
 
     def run(self, A):
         if A == 'sim_cir':
             # todo 调用backend 代码模块
-
-
-
-
-
 
             pass
 
