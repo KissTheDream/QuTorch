@@ -31,10 +31,15 @@ def smiles2int(drug):
 def seqs2int(target):
     return [VOCAB_PROTEIN[s] for s in target]
 
-def I():
-    """Single-qubit
 
+def I():
+    """Single-qubit Identification gate
+    -------
+    result : torch.tensor for operator describing Identity matrix.
     """
+
+    return torch.eye(2) + 0j
+
 
 def rx(phi):
     """Single-qubit rotation for operator sigmax with angle phi.
@@ -78,6 +83,13 @@ def z_gate():
     Pauli z
     """
     return torch.tensor([[1, 0], [0, -1]]) + 0j
+
+
+def x_gate():
+    """
+    Pauli x
+    """
+    return torch.tensor([[0, 1], [1, 0]]) + 0j
 
 
 def cnot():
@@ -445,32 +457,45 @@ class Circuit(object):
         self.gate_list.append({'gate': gate_name, 'theta': gate_params, 'which_qubit': target_qubit})
 
     def rx(self, target_qubit, phi):
+        assert isinstance(target_qubit, int), \
+            "target qubit is not integer"
         assert 0 <= target_qubit < self.n_qubits, \
             "target qubit is not available"
         self._add_gate('rx', target_qubit, phi)
 
     def ry(self, target_qubit, phi):
+        assert isinstance(target_qubit, int), \
+            "target qubit is not integer"
         assert 0 <= target_qubit < self.n_qubits, \
             "target qubit is not available"
         self._add_gate('ry', target_qubit, phi)
 
     def rz(self, target_qubit, phi):
+        assert isinstance(target_qubit, int), \
+            "target qubit is not integer"
         assert 0 <= target_qubit < self.n_qubits, \
             "target qubit is not available"
         self._add_gate('rz', target_qubit, phi)
 
-    # def x_gate(self, target_qubit):
-    #     assert 0 <= target_qubit < self.n_qubits, \
-    #         "target qubit is not available"
-    #     self._add_gate('X', target_qubit, None)
+    def x_gate(self, target_qubit):
+        assert isinstance(target_qubit, int), \
+            "target qubit is not integer"
+        assert 0 <= target_qubit < self.n_qubits, \
+            "target qubit is not available"
+        self._add_gate('X', target_qubit, None)
 
     def z_gate(self, target_qubit):
+        assert isinstance(target_qubit, int), \
+            "target qubit is not integer"
         assert 0 <= target_qubit < self.n_qubits, \
             "target qubit is not available"
         self._add_gate('Z', target_qubit, None)
 
     def cnot(self, control_qubit: int, target_qubit: int):
-        # todo 判断是否是整数
+        assert isinstance(target_qubit, int), \
+            "target qubit is not integer"
+        assert isinstance(control_qubit, int), \
+            "control qubit is not integer"
         assert control_qubit <= self.n_qubits
         assert 0 <= target_qubit < self.n_qubits, \
             "target qubit is not available"
@@ -478,39 +503,60 @@ class Circuit(object):
         self._add_gate('X', target_qubit, None)
 
     def Hcz(self, control_qubit, target_qubit):
+        assert isinstance(target_qubit, int), \
+            "target qubit is not integer"
+        assert isinstance(control_qubit, int), \
+            "control qubit is not integer"
         assert control_qubit <= self.n_qubits
         assert 0 <= target_qubit < self.n_qubits, \
             "target qubit is not available"
+
         self._add_gate('I', control_qubit, None)
         self._add_gate('Z', target_qubit, None)
 
     def rxx(self, phi, target_qubit01, target_qubit02=None):
+        assert isinstance(target_qubit01, int), \
+            "target qubit is not integer"
+        assert isinstance(target_qubit02, int), \
+            "target qubit is not integer"
         if not target_qubit02:
             target_qubit02 = target_qubit01 + 1
         assert target_qubit01 <= self.n_qubits
         assert target_qubit02 <= self.n_qubits
+
         self._add_gate('rx', target_qubit01, phi)
         self._add_gate('rx', target_qubit02, phi)
         self._add_gate('rx', target_qubit01, phi)
         self._add_gate('rx', target_qubit02, phi)
 
     def ryy(self, phi, target_qubit01, target_qubit02=None):
+        assert isinstance(target_qubit01, int), \
+            "target qubit is not integer"
+        assert isinstance(target_qubit02, int), \
+            "target qubit is not integer"
+
         if not target_qubit02:
             target_qubit02 = target_qubit01 + 1
         assert target_qubit01 <= self.n_qubits
         assert target_qubit02 <= self.n_qubits
         "target qubit should not be the same"
         assert target_qubit01 != target_qubit02
+
         self._add_gate('ry', target_qubit01, phi)
         self._add_gate('ry', target_qubit02, phi)
         self._add_gate('ry', target_qubit01, phi)
         self._add_gate('ry', target_qubit02, phi)
 
     def rzz(self, phi, target_qubit01, target_qubit02=None):
+        assert isinstance(target_qubit01, int), \
+            "target qubit is not integer"
+        assert isinstance(target_qubit02, int), \
+            "target qubit is not integer"
         if not target_qubit02:
             target_qubit02 = target_qubit01 + 1
         assert target_qubit01 <= self.n_qubits
         assert target_qubit02 <= self.n_qubits
+
         self._add_gate('rz', target_qubit01, phi)
         self._add_gate('rz', target_qubit02, phi)
         self._add_gate('rz', target_qubit01, phi)
@@ -528,7 +574,6 @@ class Circuit(object):
         U = torch.eye(dim, dtype=torch.complex64)
 
         for i, list_ele in enumerate(self.gate_list):
-
             # print(list_ele)
             # print(f"gate: {list_ele['gate']}")
             # print(f"param: {list_ele['theta']} \n")
@@ -562,11 +607,13 @@ class Circuit(object):
             gate_matrix = ry(params)
         elif gate_name == 'rz':
             gate_matrix = rz(params)
+        elif gate_name == 'I':
+            gate_matrix = I()
         # elif gate_name == 'x':
         #     gate_matrix = x_gate()
-        elif gate_name == 'Hcz':
-            gate_matrix = Hcz()
-        elif gate_name == 'z':
+        # elif gate_name == 'Hcz':
+        #     gate_matrix = Hcz()
+        elif gate_name == 'Z':
             gate_matrix = z_gate()
         elif gate_name == 'cnot':
             gate_matrix = cnot()
