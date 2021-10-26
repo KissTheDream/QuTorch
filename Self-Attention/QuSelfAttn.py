@@ -63,8 +63,6 @@ def ry(phi):
     return torch.cat((torch.cos(phi / 2).unsqueeze(dim=0), -1 * torch.sin(phi / 2).unsqueeze(dim=0),
                       torch.sin(phi / 2).unsqueeze(dim=0), torch.cos(phi / 2).unsqueeze(dim=0)), dim=0).reshape(2,
                                                                                                                 -1) + 0j
-    # return torch.tensor([[torch.cos(phi / 2), -torch.sin(phi / 2)],
-    #              [torch.sin(phi / 2), torch.cos(phi / 2)]])
 
 
 def rz(phi):
@@ -74,8 +72,6 @@ def rz(phi):
     """
     return torch.cat((torch.exp(-1j * phi / 2).unsqueeze(dim=0), torch.zeros(1),
                       torch.zeros(1), torch.exp(1j * phi / 2).unsqueeze(dim=0)), dim=0).reshape(2, -1)
-    # return torch.tensor([[torch.exp(-1j * phi / 2), 0],
-    #              [0, torch.exp(1j * phi / 2)]])
 
 
 def z_gate():
@@ -117,21 +113,38 @@ def rxx(phi):
     """
     torch.tensor representing the rxx gate with angle phi.
     """
-    return torch.kron(rx(phi), rx(phi))
+    from math import cos, sin
+    return torch.tensor([
+        [cos(phi / 2), 0, 0, -1j * sin(phi / 2)],
+        [0, cos(phi / 2), -1j * sin(phi / 2), 0],
+        [0, -1j * sin(phi / 2), cos(phi / 2), 0],
+        [-1j * sin(phi / 2), 0, 0, cos(phi / 2)]]
+    ) + 0j
 
 
 def ryy(phi):
     """
     torch.tensor representing the ryy gate with angle phi.
     """
-    return torch.kron(ry(phi), ry(phi))
+    from math import cos, sin
+    return torch.tensor([
+        [cos(phi / 2), 0, 0, 1j * sin(phi / 2)],
+        [0, cos(phi / 2), -1j * sin(phi / 2), 0],
+        [0, -1j * sin(phi / 2), cos(phi / 2), 0],
+        [1j * sin(phi / 2), 0, 0, cos(phi / 2)]]
+    ) + 0j
 
 
 def rzz(phi):
     """
     torch.tensor representing the rzz gate with angle phi.
     """
-    return torch.kron(rz(phi), rz(phi))
+    return torch.tensor([
+        [torch.exp(torch.tensor(-1j * phi / 2)), 0, 0, 0],
+        [0, torch.exp(torch.tensor(1j * phi / 2)), 0, 0],
+        [0, 0, torch.exp(torch.tensor(1j * phi / 2)), 0],
+        [0, 0, 0, torch.exp(torch.tensor(-1j * phi / 2))]]
+    ) + 0j
 
 
 def dag(x):
@@ -220,7 +233,7 @@ def ptrace(rhoAB, dimA, dimB):
 
 def expecval_ZI(state, nqubit, target):
     """
-    state为nqubit大小的密度矩阵，target为z门放置位置
+    state为 nqubit大小的密度矩阵，target为z门放置位置
 
     """
     zgate = z_gate()
@@ -539,8 +552,8 @@ class Circuit(object):
             target_qubit02 = target_qubit01 + 1
         assert target_qubit01 <= self.n_qubits
         assert target_qubit02 <= self.n_qubits
-        "target qubit should not be the same"
-        assert target_qubit01 != target_qubit02
+        assert target_qubit01 != target_qubit02, \
+            "target qubit should not be the same"
 
         self._add_gate('ry', target_qubit01, phi)
         self._add_gate('ry', target_qubit02, phi)
