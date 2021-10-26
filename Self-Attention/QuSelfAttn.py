@@ -218,6 +218,8 @@ def ptrace(rhoAB, dimA, dimB):
     dimA: n_qubits A keep
     dimB: n_qubits B trash
     """
+
+    # fixme /rhoAB should be complexfloat
     mat_dim_A = 2 ** dimA
     mat_dim_B = 2 ** dimB
 
@@ -651,5 +653,6 @@ class Circuit(object):
 
         if A == 'sim_light':
             pass
+
         if A == 'real':
             pass
