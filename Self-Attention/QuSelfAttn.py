@@ -166,6 +166,30 @@ def multi_kron(x_list):  # fixme QuTip tensor
     return x_k
 
 
+def gate_control(U, N, control, target):
+    """
+    适用于进行任意U操作变换的控制门
+    """
+    if N < 1:
+        raise ValueError("integer N must be larger or equal to 1")
+    if control >= N:
+        raise ValueError("control must be integer < integer N")
+    if target >= N:
+        raise ValueError("target must be integer < integer N")
+    if target == control:
+        raise ValueError("control cannot be equal to target")
+
+    zero_zero = torch.tensor([[1, 0], [0, 0]]) + 0j
+    one_one = torch.tensor([[0, 0], [0, 1]]) + 0j
+    list1 = [torch.eye(2)] * N
+    list2 = [torch.eye(2)] * N
+    list1[control] = zero_zero
+    list2[control] = one_one
+    list2[target] = U
+
+    return multi_kron(list1) + multi_kron(list2)
+
+
 def gate_expand_1toN(U, N, target):
     """
     representing a one-qubit gate that act on a system with N qubits.
