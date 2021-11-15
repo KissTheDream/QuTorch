@@ -616,7 +616,7 @@ class Q_MultiHeadedAttention(nn.Module):
         # We assume d_v always equals d_k
         self.d_k = d_model // h
         self.h = h
-        self.linear = nn.Linear((d_model+1)//2,d_model)
+        self.linear = nn.Linear(((d_model+1)//2)*h,d_model)
         self.attn = None
         self.dropout = nn.Dropout(p=dropout)
         
@@ -630,9 +630,11 @@ class Q_MultiHeadedAttention(nn.Module):
         # Apply attention on all the projected vectors in batch. 
         x = q_attention(query, key, value, mask=mask, 
                                  dropout=self.dropout)
-        #print(x)
+        # multi-head
+        for i in range(self.h-1):
+            x=torch.cat((x,q_attention(query, key, value, mask=mask, dropout=self.dropout)),-1)
         x=x.unsqueeze(0)
-        #print(x)
+        
         return self.linear(x)
 
 
